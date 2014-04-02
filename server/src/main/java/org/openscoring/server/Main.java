@@ -32,6 +32,7 @@ import com.sun.jersey.api.json.*;
 import com.sun.jersey.guice.*;
 import com.sun.jersey.guice.spi.container.servlet.*;
 
+import org.eclipse.jetty.util.thread.*;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.servlet.*;
 
@@ -57,6 +58,18 @@ public class Main {
 		help = true
 	)
 	private boolean help = false;
+
+	@Parameter (
+		names = {"--max-threads"},
+		description = "The maximum number of threads in the threadpool."
+	)
+	private int maxThreads = 1;
+
+	@Parameter (
+		names = {"--min-threads"},
+		description = "The minimum number of threads in the threadpool."
+	)
+	private int minThreads = 1;
 
 
 	static
@@ -84,7 +97,12 @@ public class Main {
 	}
 
 	private void run() throws Exception {
-		Server server = new Server(this.port);
+		QueuedThreadPool threadPool = new QueuedThreadPool(this.maxThreads, this.minThreads);
+		Server server = new Server(threadPool);
+
+		ServerConnector connector = new ServerConnector(server);
+		connector.setPort(this.port);
+		server.setConnectors(new Connector[] { connector });
 
 		ServletContextHandler contextHandler = new ServletContextHandler();
 		contextHandler.setContextPath(this.contextPath);
