@@ -43,6 +43,8 @@ import org.supercsv.prefs.*;
 
 import org.xml.sax.*;
 
+import com.codahale.metrics.annotation.*;
+
 @Path("model")
 public class ModelService {
 
@@ -55,6 +57,8 @@ public class ModelService {
 	}
 
 	@PUT
+	@Timed(name="deploy.timer")
+	@Metered(name="deploy.meter")
 	@Path("{id}")
 	@Consumes({MediaType.APPLICATION_XML, MediaType.TEXT_XML})
 	@Produces(MediaType.TEXT_PLAIN)
@@ -81,6 +85,8 @@ public class ModelService {
 	}
 
 	@GET
+	@Timed(name="getDeployedIds.timer")
+	@Metered(name="getDeployedIds.meter")
 	@Produces(MediaType.APPLICATION_JSON)
 	public List<String> getDeployedIds(){
 		List<String> result = new ArrayList<String>(this.registry.idSet());
@@ -89,6 +95,8 @@ public class ModelService {
 	}
 
 	@GET
+	@Timed(name="getSummary.timer")
+	@Metered(name="getSummary.meter")
 	@Path("{id}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public SummaryResponse getSummary(@PathParam("id") String id){
@@ -116,6 +124,8 @@ public class ModelService {
 	}
 
 	@POST
+	@Timed(name="evaluate.timer")
+	@Metered(name="evaluate.meter")
 	@Path("{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
@@ -128,6 +138,8 @@ public class ModelService {
 	}
 
 	@POST
+	@Timed(name="evaluateBatch.timer")
+	@Metered(name="evaluateBatch.meter")
 	@Path("{id}/batch")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
@@ -168,6 +180,8 @@ public class ModelService {
 	}
 
 	@POST
+	@Timed(name="evaluateCsv.timer")
+	@Metered(name="evaluateCsv.meter")
 	@Path("{id}/csv")
 	@Consumes(MediaType.TEXT_PLAIN)
 	@Produces(MediaType.TEXT_PLAIN)
@@ -206,6 +220,8 @@ public class ModelService {
 	}
 
 	@DELETE
+	@Timed(name="undeploy.timer")
+	@Metered(name="undeploy.meter")
 	@Path("{id}")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String undeploy(@PathParam("id") String id){

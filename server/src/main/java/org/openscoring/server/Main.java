@@ -19,6 +19,9 @@
 package org.openscoring.server;
 
 import java.util.*;
+import java.util.concurrent.*;
+
+import java.io.*;
 
 import javax.servlet.*;
 
@@ -32,11 +35,15 @@ import com.sun.jersey.api.json.*;
 import com.sun.jersey.guice.*;
 import com.sun.jersey.guice.spi.container.servlet.*;
 
-import org.eclipse.jetty.util.thread.*;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.servlet.*;
+import org.eclipse.jetty.util.thread.*;
 
 import com.beust.jcommander.*;
+
+import com.codahale.metrics.*;
+import com.codahale.metrics.jersey.*;
+import com.codahale.metrics.jetty9.*;
 
 public class Main {
 
@@ -71,6 +78,11 @@ public class Main {
 	)
 	private int minThreads = 1;
 
+	@Parameter (
+		names = {"--metrics-dir"},
+		description = "The directory where metrics are stored."
+	)
+	private String metricsDir = "";
 
 	static
 	public void main(String... args) throws Exception {
@@ -97,7 +109,9 @@ public class Main {
 	}
 
 	private void run() throws Exception {
-		QueuedThreadPool threadPool = new QueuedThreadPool(this.maxThreads, this.minThreads);
+		final MetricRegistry metrics = new MetricRegistry();
+
+		InstrumentedQueuedThreadPool threadPool = new InstrumentedQueuedThreadPool(metrics, this.maxThreads, this.minThreads);
 		Server server = new Server(threadPool);
 
 		ServerConnector connector = new ServerConnector(server);
@@ -114,6 +128,8 @@ public class Main {
 			@Override
 			public void configureServlets(){
 				bind(ModelService.class);
+				bind(InstrumentedResourceMethodDispatchAdapter.class)
+				  .toInstance(new InstrumentedResourceMethodDispatchAdapter(metrics));
 
 				Map<String, String> config = Maps.newLinkedHashMap();
 				config.put(JSONConfiguration.FEATURE_POJO_MAPPING, "true");
@@ -139,6 +155,21 @@ public class Main {
 		server.setHandler(contextHandler);
 
 		server.start();
+
+		if (!this.metricsDir.trim().equals("")) {
+			System.out.printf("Reporting metrics in %s\n", this.metricsDir);
+			CsvReporter reporter = CsvReporter.forRegistry(metrics)
+			                                  .formatFor(Locale.US)
+			                                  .convertRatesTo(TimeUnit.SECONDS)
+			                                  .convertDurationsTo(TimeUnit.MILLISECONDS)
+			                                  .build(new File(this.metricsDir));
+			reporter.start(1, TimeUnit.SECONDS);
+			// JmxReporter reporter = JmxReporter.forRegistry(metrics).build();
+			// reporter.start();
+		} else {
+			System.out.println("No metrics will be reported.");
+		}
+
 		server.join();
 	}
 }
